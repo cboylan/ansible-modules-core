@@ -170,23 +170,25 @@ if __name__ == '__main__':
             sub_pid = os.fork()
             if sub_pid:
                 # the parent stops the process after the time limit
-                remaining = int(time_limit)
+                time_limit = int(time_limit)
 
                 # set the child process group id to kill all children
                 os.setpgid(sub_pid, sub_pid)
 
-                notice("Start watching %s (%s)"%(sub_pid, remaining))
-                time.sleep(step)
+                notice("Start watching %s (%s)"%(sub_pid, time_limit))
+                start_time = time.time()
                 while os.waitpid(sub_pid, os.WNOHANG) == (0, 0):
-                    notice("%s still running (%s)"%(sub_pid, remaining))
                     time.sleep(step)
-                    remaining = remaining - step
+                    # Calculate remaining time against actual elapsed
+                    # wall time.
+                    remaining = time_limit - (time.time() - start_time)
                     if remaining <= 0:
                         notice("Now killing %s"%(sub_pid))
                         os.killpg(sub_pid, signal.SIGKILL)
                         notice("Sent kill to group %s"%sub_pid)
                         time.sleep(1)
                         sys.exit(0)
+                    notice("%s still running (%s)"%(sub_pid, remaining))
                 notice("Done in kid B.")
                 sys.exit(0)
             else:
